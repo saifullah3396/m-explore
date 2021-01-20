@@ -54,7 +54,7 @@ Explore::Explore()
   : private_nh_("~")
   , tf_listener_(ros::Duration(10.0))
   , costmap_client_(private_nh_, relative_nh_, &tf_listener_)
-  , move_base_client_("move_base")
+  , move_base_client_("/kobuki_1/move_base")
   , prev_distance_(0)
   , last_markers_count_(0)
 {

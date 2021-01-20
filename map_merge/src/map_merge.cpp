@@ -37,6 +37,7 @@
 
 #include <thread>
 
+#include <iostream>
 #include <map_merge/map_merge.h>
 #include <ros/assert.h>
 #include <ros/console.h>
@@ -126,6 +127,7 @@ void MapMerge::topicSubscribing()
     subscription.map_sub = node_.subscribe<nav_msgs::OccupancyGrid>(
         map_topic, 50,
         [this, &subscription](const nav_msgs::OccupancyGrid::ConstPtr& msg) {
+          std::cout << "Received update" << std::endl;
           fullMapUpdate(msg, subscription);
         });
     ROS_INFO("Subscribing to MAP updates topic: %s.",
@@ -304,7 +306,6 @@ bool MapMerge::isRobotMapTopic(const ros::master::TopicInfo& topic)
   std::string topic_namespace = ros::names::parentNamespace(topic.name);
   bool is_map_topic =
       ros::names::append(topic_namespace, robot_map_topic_) == topic.name;
-
   /* test whether topic contains *anywhere* robot namespace */
   auto pos = topic.name.find(robot_namespace_);
   bool contains_robot_namespace = pos != std::string::npos;
@@ -314,9 +315,8 @@ bool MapMerge::isRobotMapTopic(const ros::master::TopicInfo& topic)
 
   /* we don't want to subcribe on published merged map */
   bool is_our_topic = merged_map_publisher_.getTopic() == topic.name;
-
-  return is_occupancy_grid && !is_our_topic && contains_robot_namespace &&
-         is_map_topic;
+  return is_occupancy_grid && !is_our_topic && contains_robot_namespace;// &&
+         //is_map_topic;
 }
 
 /*
@@ -337,7 +337,8 @@ bool MapMerge::getInitPose(const std::string& name,
                       pose.translation.z) &&
       ros::param::get(ros::names::append(merging_namespace, "init_pose_yaw"),
                       yaw);
-
+  ROS_INFO_STREAM("success: "<< success);
+  ROS_INFO_STREAM("pose.translation: "<< pose.translation);
   tf2::Quaternion q;
   q.setEuler(0., 0., yaw);
   pose.rotation = toMsg(q);
