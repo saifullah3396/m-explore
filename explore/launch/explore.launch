@@ -1,6 +1,7 @@
 <launch>
+<arg name="robot_namespaces" default="[kobuki_1, kobuki_2, kobuki_3]"/>
 <node pkg="explore_lite" type="explore" respawn="false" name="explore" output="screen">
-  <param name="robot_base_frame" value="kobuki_1/base_link"/>
+  <rosparam param="robot_namespaces" subst_value="True">$(arg robot_namespaces)</rosparam>
   <param name="costmap_topic" value="/map_merge/map"/>
   <param name="costmap_updates_topic" value=""/>
   <param name="visualize" value="true"/>

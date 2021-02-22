@@ -1,18 +1,16 @@
+#include <costmap_2d/cost_values.h>
+#include <costmap_2d/costmap_2d.h>
+#include <explore/costmap_tools.h>
 #include <explore/frontier_search.h>
+#include <geometry_msgs/Point.h>
 
 #include <mutex>
 
-#include <costmap_2d/cost_values.h>
-#include <costmap_2d/costmap_2d.h>
-#include <geometry_msgs/Point.h>
-
-#include <explore/costmap_tools.h>
-
 namespace frontier_exploration
 {
+using costmap_2d::FREE_SPACE;
 using costmap_2d::LETHAL_OBSTACLE;
 using costmap_2d::NO_INFORMATION;
-using costmap_2d::FREE_SPACE;
 
 FrontierSearch::FrontierSearch(costmap_2d::Costmap2D* costmap,
                                double potential_scale, double gain_scale,
@@ -194,4 +192,4 @@ double FrontierSearch::frontierCost(const Frontier& frontier)
           costmap_->getResolution()) -
          (gain_scale_ * frontier.size * costmap_->getResolution());
 }
-}
+}  // namespace frontier_exploration

@@ -37,19 +37,18 @@
 #ifndef NAV_EXPLORE_H_
 #define NAV_EXPLORE_H_
 
-#include <memory>
-#include <mutex>
-#include <string>
-#include <vector>
-
 #include <actionlib/client/simple_action_client.h>
+#include <explore/costmap_client.h>
+#include <explore/frontier_search.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <explore/costmap_client.h>
-#include <explore/frontier_search.h>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
 
 namespace explore
 {
@@ -77,22 +76,28 @@ private:
    * @brief  Publish a frontiers as markers
    */
   void visualizeFrontiers(
-      const std::vector<frontier_exploration::Frontier>& frontiers);
+      const int& pub_index,
+      const std::vector<frontier_exploration::Frontier>& frontiers,
+      const bool& randomize_colors);
 
   void reachedGoal(const actionlib::SimpleClientGoalState& status,
                    const move_base_msgs::MoveBaseResultConstPtr& result,
                    const geometry_msgs::Point& frontier_goal);
 
   bool goalOnBlacklist(const geometry_msgs::Point& goal);
+  bool frontierDuplicate(
+      const frontier_exploration::Frontier& frontier,
+      const std::vector<frontier_exploration::Frontier>& other_frontiers);
 
   ros::NodeHandle private_nh_;
   ros::NodeHandle relative_nh_;
-  ros::Publisher marker_array_publisher_;
+  std::vector<ros::Publisher> marker_array_publishers_;
   tf::TransformListener tf_listener_;
 
   Costmap2DClient costmap_client_;
-  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
-      move_base_client_;
+  std::vector<std::unique_ptr<
+      actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>>>
+      move_base_clients_;
   frontier_exploration::FrontierSearch search_;
   ros::Timer exploring_timer_;
   ros::Timer oneshot_;
@@ -108,7 +113,10 @@ private:
   double potential_scale_, orientation_scale_, gain_scale_;
   ros::Duration progress_timeout_;
   bool visualize_;
+
+  // parameters for multi-robot search
+  std::vector<std::string> robot_namespaces_;
 };
-}
+}  // namespace explore
 
 #endif

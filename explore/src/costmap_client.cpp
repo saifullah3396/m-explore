@@ -55,13 +55,14 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh,
   std::string costmap_topic;
   std::string footprint_topic;
   std::string costmap_updates_topic;
+  std::vector<std::string> robot_namespaces;
   param_nh.param("costmap_topic", costmap_topic, std::string("costmap"));
   param_nh.param("costmap_updates_topic", costmap_updates_topic,
                  std::string("costmap_updates"));
-  param_nh.param("robot_base_frame", robot_base_frame_,
-                 std::string("base_link"));
   // transform tolerance is used for all tf transforms here
   param_nh.param("transform_tolerance", transform_tolerance_, 0.3);
+  param_nh.param("robots_namespaces", robot_namespaces,
+                 std::vector<std::string>());
 
   /* initialize costmap */
   costmap_sub_ = subscription_nh.subscribe<nav_msgs::OccupancyGrid>(
@@ -85,30 +86,38 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh,
 
   /* resolve tf prefix for robot_base_frame */
   std::string tf_prefix = tf::getPrefixParam(param_nh);
-  robot_base_frame_ = tf::resolve(tf_prefix, robot_base_frame_);
+  for (const auto& ns : robot_namespaces) {
+    robot_base_frames_.push_back(tf::resolve(tf_prefix, std::string("/") + ns +
+                                                            std::string("/base_"
+                                                                        "lin"
+                                                                        "k")));
+  }
 
   // we need to make sure that the transform between the robot base frame and
   // the global frame is available
   /* tf transform is necessary for getRobotPose */
   ros::Time last_error = ros::Time::now();
   std::string tf_error;
-  while (ros::ok() &&
-         !tf_->waitForTransform(global_frame_, robot_base_frame_, ros::Time(),
-                                ros::Duration(0.1), ros::Duration(0.01),
-                                &tf_error)) {
-    ros::spinOnce();
-    if (last_error + ros::Duration(5.0) < ros::Time::now()) {
-      ROS_WARN(
-          "Timed out waiting for transform from %s to %s to become available "
-          "before subscribing to costmap, tf error: %s",
-          robot_base_frame_.c_str(), global_frame_.c_str(), tf_error.c_str());
-      last_error = ros::Time::now();
+  for (const auto& robot_base_frame : robot_base_frames_) {
+    while (ros::ok() &&
+           !tf_->waitForTransform(global_frame_, robot_base_frame, ros::Time(),
+                                  ros::Duration(0.1), ros::Duration(0.01),
+                                  &tf_error)) {
+      ros::spinOnce();
+      if (last_error + ros::Duration(5.0) < ros::Time::now()) {
+        ROS_WARN("Timed out waiting for transform from %s to %s to become "
+                 "available "
+                 "before subscribing to costmap, tf error: %s",
+                 robot_base_frame.c_str(), global_frame_.c_str(),
+                 tf_error.c_str());
+        last_error = ros::Time::now();
+      }
+      // The error string will accumulate and errors will typically be the same,
+      // so the last
+      // will do for the warning above. Reset the string here to avoid
+      // accumulation.
+      tf_error.clear();
     }
-    // The error string will accumulate and errors will typically be the same,
-    // so the last
-    // will do for the warning above. Reset the string here to avoid
-    // accumulation.
-    tf_error.clear();
   }
 }
 
@@ -187,13 +196,14 @@ void Costmap2DClient::updatePartialMap(
   }
 }
 
-geometry_msgs::Pose Costmap2DClient::getRobotPose() const
+geometry_msgs::Pose
+Costmap2DClient::getRobotPose(const std::string& robot_namespace) const
 {
   tf::Stamped<tf::Pose> global_pose;
   global_pose.setIdentity();
   tf::Stamped<tf::Pose> robot_pose;
   robot_pose.setIdentity();
-  robot_pose.frame_id_ = robot_base_frame_;
+  robot_pose.frame_id_ = "/" + robot_namespace + "/base_link";
   robot_pose.stamp_ = ros::Time();
   ros::Time current_time =
       ros::Time::now();  // save time for checking tf delay later
@@ -202,8 +212,9 @@ geometry_msgs::Pose Costmap2DClient::getRobotPose() const
   try {
     tf_->transformPose(global_frame_, robot_pose, global_pose);
   } catch (tf::LookupException& ex) {
-    ROS_ERROR_THROTTLE(1.0, "No Transform available Error looking up robot "
-                            "pose: %s\n",
+    ROS_ERROR_THROTTLE(1.0,
+                       "No Transform available Error looking up robot "
+                       "pose: %s\n",
                        ex.what());
     return {};
   } catch (tf::ConnectivityException& ex) {
@@ -218,8 +229,9 @@ geometry_msgs::Pose Costmap2DClient::getRobotPose() const
   // check global_pose timeout
   if (current_time.toSec() - global_pose.stamp_.toSec() >
       transform_tolerance_) {
-    ROS_WARN_THROTTLE(1.0, "Costmap2DClient transform timeout. Current time: "
-                           "%.4f, global_pose stamp: %.4f, tolerance: %.4f",
+    ROS_WARN_THROTTLE(1.0,
+                      "Costmap2DClient transform timeout. Current time: "
+                      "%.4f, global_pose stamp: %.4f, tolerance: %.4f",
                       current_time.toSec(), global_pose.stamp_.toSec(),
                       transform_tolerance_);
     return {};

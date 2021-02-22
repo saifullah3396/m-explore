@@ -66,7 +66,7 @@ public:
    * @brief Get the pose of the robot in the global frame of the costmap
    * @return pose of the robot in the global frame of the costmap
    */
-  geometry_msgs::Pose getRobotPose() const;
+  geometry_msgs::Pose getRobotPose(const std::string& robot_namespace) const;
 
   /**
    * @brief Return a pointer to the "master" costmap which receives updates from
@@ -99,15 +99,6 @@ public:
     return global_frame_;
   }
 
-  /**
-   * @brief  Returns the local frame of the costmap
-   * @return The local frame of the costmap
-   */
-  const std::string& getBaseFrameID() const
-  {
-    return robot_base_frame_;
-  }
-
 protected:
   void updateFullMap(const nav_msgs::OccupancyGrid::ConstPtr& msg);
   void updatePartialMap(const map_msgs::OccupancyGridUpdate::ConstPtr& msg);
@@ -116,9 +107,10 @@ protected:
 
   const tf::TransformListener* const tf_;  ///< @brief Used for transforming
                                            /// point clouds
-  std::string global_frame_;      ///< @brief The global frame for the costmap
-  std::string robot_base_frame_;  ///< @brief The frame_id of the robot base
-  double transform_tolerance_;    ///< timeout before transform errors
+  std::string global_frame_;  ///< @brief The global frame for the costmap
+  std::vector<std::string> robot_base_frames_;  ///< @brief The frame ids of the
+                                                ///< robot bases
+  double transform_tolerance_;  ///< timeout before transform errors
 
 private:
   // will be unsubscribed at destruction
