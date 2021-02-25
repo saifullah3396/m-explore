@@ -16,6 +16,16 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
 )
 
+# OpenCV is required for merging without initial positions
+find_package(OpenCV REQUIRED)
+if("${OpenCV_VERSION}" VERSION_LESS "3.0")
+  message(FATAL_ERROR "This package needs OpenCV >= 3.0")
+endif()
+if("${OpenCV_VERSION}" VERSION_LESS "4.0")
+  message(WARNING "This package supports OpenCV 3, but some features may not be "
+    "available. Upgrade to OpenCV 4 to take advantage of all features.")
+endif()
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -32,6 +42,8 @@ catkin_package(
     std_msgs
     tf
     visualization_msgs
+  DEPENDS
+    OpenCV
 )
 
 ###########
@@ -44,6 +56,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 ## Specify additional locations of header files
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
   include
 )
 
@@ -53,7 +66,7 @@ add_executable(explore
   src/frontier_search.cpp
 )
 add_dependencies(explore ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(explore ${catkin_LIBRARIES})
+target_link_libraries(explore ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 #############
 ## Install ##

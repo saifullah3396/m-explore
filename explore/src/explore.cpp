@@ -36,6 +36,8 @@
  *********************************************************************/
 
 #include <explore/explore.h>
+#include <explore/frontier_search.h>
+#include <explore/utils.h>
 
 #include <thread>
 
@@ -69,6 +71,19 @@ Explore::Explore()
   private_nh_.param("min_frontier_size", min_frontier_size, 0.5);
   private_nh_.param("robot_namespaces", robot_namespaces_,
                     std::vector<std::string>());
+
+  // load the points that define the exploration boundary
+  std::vector<float> p1, p2, p3, p4;
+  relative_nh_.param("exploration_boundary/p1", p1, std::vector<float>());
+  relative_nh_.param("exploration_boundary/p2", p2, std::vector<float>());
+  relative_nh_.param("exploration_boundary/p3", p3, std::vector<float>());
+  relative_nh_.param("exploration_boundary/p4", p4, std::vector<float>());
+  boundary_points_.push_back(p1);
+  boundary_points_.push_back(p2);
+  boundary_points_.push_back(p3);
+  boundary_points_.push_back(p4);
+  exploration_bbox_ = explore::pointsToBBox(boundary_points_);
+
   for (const auto& ns : robot_namespaces_) {
     auto action_name = std::string("/") + ns + std::string("/move_base");
     move_base_clients_.push_back(
@@ -81,6 +96,10 @@ Explore::Explore()
       marker_array_publishers_.push_back(
           private_nh_.advertise<visualization_msgs::MarkerArray>(
               ns + std::string("/frontiers"), 10));
+      exploration_boundary_publisher_ =
+          private_nh_.advertise<visualization_msgs::Marker>(
+              ns + std::string("/exploration_boundary"), 10, true);
+      visualizeBoundary();
     }
   }
 
@@ -102,6 +121,37 @@ Explore::Explore()
 Explore::~Explore()
 {
   stop();
+}
+
+void Explore::visualizeBoundary()
+{
+  std_msgs::ColorRGBA blue;
+  blue.r = 0;
+  blue.g = 0;
+  blue.b = 1.0;
+  blue.a = 1.0;
+
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = costmap_client_.getGlobalFrameID();
+  marker.header.stamp = ros::Time::now();
+  marker.color.b = 1.0;
+  marker.color.a = 255;
+  marker.lifetime = ros::Duration(0);
+  marker.frame_locked = true;
+  marker.type = visualization_msgs::Marker::LINE_STRIP;
+  marker.scale.x = 0.1;
+
+  auto points = boundary_points_;
+  points.push_back(points.front());
+  for (const auto& p : points) {
+    geometry_msgs::Point gp;
+    gp.x = p[0];
+    gp.y = p[1];
+    gp.z = 0.1;
+    marker.points.push_back(gp);
+  }
+
+  exploration_boundary_publisher_.publish(marker);
 }
 
 void Explore::visualizeFrontiers(
@@ -208,6 +258,23 @@ void Explore::makePlan()
     for (size_t i = 0; i < frontiers.size(); ++i) {
       ROS_DEBUG("frontier %zd cost: %f", i, frontiers[i].cost);
     }
+    frontier_exploration::Frontier output;
+    output.centroid.x = -4;
+    output.centroid.y = 0;
+    frontiers.push_back(output);
+    // remove frontiers that lie outside the boundary
+    frontiers.erase(
+        std::remove_if(frontiers.begin(), frontiers.end(),
+                       [this](const frontier_exploration::Frontier& f) {
+                         std::cout << "f.centroid:" << f.centroid << std::endl;
+                         if (!exploration_bbox_.contains(
+                                 cv::Point(f.centroid.x, f.centroid.y))) {
+                           std::cout << "Removed:" << std::endl;
+                         }
+                         return !exploration_bbox_.contains(
+                             cv::Point(f.centroid.x, f.centroid.y));
+                       }),
+        frontiers.end());
 
     if (frontiers.empty()) {
       stop();

@@ -47,6 +47,7 @@
 
 #include <memory>
 #include <mutex>
+#include <opencv2/core/core.hpp>
 #include <string>
 #include <vector>
 
@@ -80,6 +81,11 @@ private:
       const std::vector<frontier_exploration::Frontier>& frontiers,
       const bool& randomize_colors);
 
+  /**
+   * @brief Publish exploration boundary as a rectangle
+   */
+  void visualizeBoundary();
+
   void reachedGoal(const actionlib::SimpleClientGoalState& status,
                    const move_base_msgs::MoveBaseResultConstPtr& result,
                    const geometry_msgs::Point& frontier_goal);
@@ -92,6 +98,7 @@ private:
   ros::NodeHandle private_nh_;
   ros::NodeHandle relative_nh_;
   std::vector<ros::Publisher> marker_array_publishers_;
+  ros::Publisher exploration_boundary_publisher_;
   tf::TransformListener tf_listener_;
 
   Costmap2DClient costmap_client_;
@@ -113,6 +120,10 @@ private:
   double potential_scale_, orientation_scale_, gain_scale_;
   ros::Duration progress_timeout_;
   bool visualize_;
+
+  // exploration boundary
+  cv::Rect exploration_bbox_;
+  std::vector<std::vector<float>> boundary_points_;
 
   // parameters for multi-robot search
   std::vector<std::string> robot_namespaces_;

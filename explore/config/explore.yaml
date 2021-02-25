@@ -1,0 +1,7 @@
+# setup the 4 points within which the exploration is bounded
+# points are added in counterclockwise order
+exploration_boundary:
+  p1: [9.128573, -1.713103]
+  p2: [-5.340173, -1.580273]
+  p3: [-5.329112, -11.471988]
+  p4: [9.074531, -11.465853]

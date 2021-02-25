@@ -1,16 +1,24 @@
 <launch>
-<arg name="robot_namespaces" default="[kobuki_1, kobuki_2, kobuki_3]"/>
-<node pkg="explore_lite" type="explore" respawn="false" name="explore" output="screen">
-  <rosparam param="robot_namespaces" subst_value="True">$(arg robot_namespaces)</rosparam>
-  <param name="costmap_topic" value="/map_merge/map"/>
-  <param name="costmap_updates_topic" value=""/>
-  <param name="visualize" value="true"/>
-  <param name="planner_frequency" value="0.33"/>
-  <param name="progress_timeout" value="30.0"/>
-  <param name="potential_scale" value="3.0"/>
-  <param name="orientation_scale" value="0.0"/>
-  <param name="gain_scale" value="1.0"/>
-  <param name="transform_tolerance" value="0.3"/>
-  <param name="min_frontier_size" value="0.75"/>
-</node>
+  <arg name="robot_namespaces" default="[kobuki_1, kobuki_2, kobuki_3]"/>
+
+  <!-- Load the exploration config -->
+  <rosparam
+    file="$(find explore_lite)/config/explore.yaml"
+    subst_value="true"
+    command="load"/>
+
+  <!-- Run the exploration -->
+  <node pkg="explore_lite" type="explore" respawn="false" name="explore" output="screen">
+    <rosparam param="robot_namespaces" subst_value="True">$(arg robot_namespaces)</rosparam>
+    <param name="costmap_topic" value="/map_merge/map"/>
+    <param name="costmap_updates_topic" value=""/>
+    <param name="visualize" value="true"/>
+    <param name="planner_frequency" value="1.0"/>
+    <param name="progress_timeout" value="30.0"/>
+    <param name="potential_scale" value="3.0"/>
+    <param name="orientation_scale" value="0.0"/>
+    <param name="gain_scale" value="1.0"/>
+    <param name="transform_tolerance" value="0.3"/>
+    <param name="min_frontier_size" value="0.75"/>
+  </node>
 </launch>
