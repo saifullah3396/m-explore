@@ -107,10 +107,10 @@ Explore::Explore()
                                                  potential_scale_, gain_scale_,
                                                  min_frontier_size);
 
-  ROS_INFO("Waiting to connect to move_base server");
-  for (auto& mbc : move_base_clients_) {
-    mbc->waitForServer();
-  }
+  // ROS_INFO("Waiting to connect to move_base server");
+  // for (auto& mbc : move_base_clients_) {
+  //   mbc->waitForServer();
+  // }
   ROS_INFO("Connected to move_base server");
 
   exploring_timer_ =
@@ -250,6 +250,11 @@ void Explore::makePlan()
   // find frontiers
   std::vector<frontier_exploration::Frontier> other_robot_frontiers;
   for (int i = 0; i < robot_namespaces_.size(); ++i) {
+    const auto& mbc = move_base_clients_[i];
+    if (!mbc->isServerConnected()) {
+      continue;
+    }
+
     auto pose = costmap_client_.getRobotPose(robot_namespaces_[i]);
 
     // get frontiers sorted according to cost
@@ -338,7 +343,7 @@ void Explore::makePlan()
     goal.target_pose.pose.orientation.w = 1.;
     goal.target_pose.header.frame_id = costmap_client_.getGlobalFrameID();
     goal.target_pose.header.stamp = ros::Time::now();
-    move_base_clients_[i]->sendGoal(
+    mbc->sendGoal(
         goal, [this, target_position](
                   const actionlib::SimpleClientGoalState& status,
                   const move_base_msgs::MoveBaseResultConstPtr& result) {
@@ -410,6 +415,9 @@ void Explore::start()
 void Explore::stop()
 {
   for (auto& mbc : move_base_clients_) {
+    if (!mbc->isServerConnected()) {
+      continue;
+    }
     mbc->cancelAllGoals();
   }
   exploring_timer_.stop();
