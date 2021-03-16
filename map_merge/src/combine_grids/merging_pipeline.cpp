@@ -191,6 +191,9 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
   // - in that case all resolutions should be the same.
   float any_resolution = 0.0;
   for (size_t i = 0; i < transforms_.size(); ++i) {
+    if (!grids_[i]) {
+      continue;
+    }
     // check if this transform is the reference frame
     if (isIdentity(transforms_[i])) {
       result->info.resolution = grids_[i]->info.resolution;
